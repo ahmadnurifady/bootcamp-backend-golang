@@ -16,17 +16,6 @@ type transactionUsecase struct {
 
 func (uc *transactionUsecase) CreateTransaction(request domain.Transaction) (domain.Transaction, error) {
 
-	//sendToRepo := domain.Transaction{
-	//	TransactionID:  request.TransactionID,
-	//	OrderType:      request.OrderType,
-	//	UserId:         request.UserId,
-	//	ProductId:      request.ProductId,
-	//	Payload:        nil,
-	//	CurrentService: "orchestrator",
-	//	CreatedAt:      time.Now(),
-	//	UpdatedAt:      time.Now(),
-	//}
-
 	result, err := uc.repo.CreateTransaction(request)
 	if err != nil {
 		return domain.Transaction{}, err
