@@ -8,9 +8,21 @@ import (
 
 type UsecaseProduct interface {
 	ValidateProduct(productId string) (dto.BaseResponse, error)
+	ValidateProductCredit(productId string) (dto.BaseResponse, error)
 }
 
 type usecaseProduct struct {
+}
+
+func (uc usecaseProduct) ValidateProductCredit(productId string) (dto.BaseResponse, error) {
+	response, err := outbond.GetProductCreditValidation(productId)
+	if err != nil {
+		return dto.BaseResponse{}, err
+	}
+
+	fmt.Printf("Product credit validation response: %+v\n", response)
+
+	return *response, nil
 }
 
 func (uc usecaseProduct) ValidateProduct(productId string) (dto.BaseResponse, error) {

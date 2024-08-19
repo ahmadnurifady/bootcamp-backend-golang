@@ -5,7 +5,6 @@ import (
 	"github.com/IBM/sarama"
 	"github.com/goccy/go-json"
 	"github.com/google/uuid"
-	"service-user/internal/domain"
 	"service-user/internal/domain/dto"
 	"service-user/internal/usecase"
 )
@@ -40,7 +39,16 @@ func (h *MessageHandler) processMessage(msg *sarama.ConsumerMessage) error {
 
 	fmt.Println(string(msg.Value))
 
-	responseOutbond, err := h.ucUser.ValidateUser(messageKafka.UserId)
+	var responseOutbond dto.BaseResponse
+	var err error
+
+	switch messageKafka.OrderType {
+	case "beli barang":
+		responseOutbond, err = h.ucUser.ValidateUser(messageKafka.UserId)
+	case "beli pulsa":
+		responseOutbond, err = h.ucUser.ValidateNumber(messageKafka.UserId)
+	}
+
 	if err != nil {
 		return fmt.Errorf("error validating user: %w", err)
 	}
@@ -58,8 +66,7 @@ func (h *MessageHandler) prepareChangeDataMessage(messageKafka *dto.MessageKafka
 	status := "validate_user_success"
 	payload := responseOutbond.Data
 	if responseOutbond.ResponseCode >= 400 && responseOutbond.ResponseCode < 500 {
-		status = "validate_user_failed"
-		payload = domain.User{}
+		status = "rollback"
 	}
 
 	return dto.MessageKafka{

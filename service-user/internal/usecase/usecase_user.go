@@ -8,10 +8,20 @@ import (
 
 type UsecaseUser interface {
 	ValidateUser(userId string) (dto.BaseResponse, error)
+	ValidateNumber(number string) (dto.BaseResponse, error)
 }
 
 type usecaseUser struct {
 	//repo repository.RepositoryUser
+}
+
+func (u usecaseUser) ValidateNumber(number string) (dto.BaseResponse, error) {
+	response, err := outbond.GetNumberValidation(number)
+	if err != nil {
+		return dto.BaseResponse{}, err
+	}
+
+	return *response, nil
 }
 
 func (u usecaseUser) ValidateUser(userId string) (dto.BaseResponse, error) {

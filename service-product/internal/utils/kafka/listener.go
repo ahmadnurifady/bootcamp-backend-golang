@@ -37,26 +37,38 @@ func (h *MessageHandler) processMessage(msg *sarama.ConsumerMessage) error {
 		return fmt.Errorf("error unmarshalling message: %w", err)
 	}
 
-	fmt.Println(string(msg.Value))
+	fmt.Printf("Received message: %s\n", string(msg.Value))
 
-	responseOutbond, err := h.ucProduct.ValidateProduct(messageKafka.ProductId)
+	response, err := h.validateProduct(messageKafka)
 	if err != nil {
 		return fmt.Errorf("error validating product: %w", err)
 	}
 
-	changeDataMessage := h.prepareChangeDataMessage(&messageKafka, &responseOutbond)
+	changeDataMessage := h.prepareChangeDataMessage(&messageKafka, response)
 
 	if err := h.sendMessage(changeDataMessage); err != nil {
 		return fmt.Errorf("error sending message: %w", err)
 	}
 
+	fmt.Printf("Success sending message: %+v\n", changeDataMessage)
 	return nil
 }
 
-func (h *MessageHandler) prepareChangeDataMessage(messageKafka *dto.MessageKafka, responseOutbond *dto.BaseResponse) dto.MessageKafka {
-	status := "validate_user_failed"
-	if responseOutbond.ResponseCode >= 400 && responseOutbond.ResponseCode < 500 {
-		status = "validate_user_success"
+func (h *MessageHandler) validateProduct(messageKafka dto.MessageKafka) (dto.BaseResponse, error) {
+	switch messageKafka.OrderType {
+	case "beli barang":
+		return h.ucProduct.ValidateProduct(messageKafka.ProductId)
+	case "beli pulsa":
+		return h.ucProduct.ValidateProductCredit(messageKafka.ProductId)
+	default:
+		return dto.BaseResponse{}, fmt.Errorf("unknown order type: %s", messageKafka.OrderType)
+	}
+}
+
+func (h *MessageHandler) prepareChangeDataMessage(messageKafka *dto.MessageKafka, response dto.BaseResponse) dto.MessageKafka {
+	status := "validate_product_success"
+	if response.ResponseCode >= 400 && response.ResponseCode < 500 {
+		status = "rollback"
 	}
 
 	return dto.MessageKafka{
@@ -66,9 +78,10 @@ func (h *MessageHandler) prepareChangeDataMessage(messageKafka *dto.MessageKafka
 		TransactionId:  messageKafka.TransactionId,
 		UserId:         messageKafka.UserId,
 		ProductId:      messageKafka.ProductId,
+		Payload:        response.Data,
 		RespStatus:     status,
-		RespMessage:    responseOutbond.ResponseMessage,
-		RespCode:       responseOutbond.ResponseCode,
+		RespMessage:    response.ResponseMessage,
+		RespCode:       response.ResponseCode,
 	}
 }
 

@@ -19,7 +19,6 @@ func NewKafkaConsumer(
 	config.Consumer.Group.Rebalance.Strategy = sarama.NewBalanceStrategyRoundRobin()
 	config.Consumer.Offsets.Initial = sarama.OffsetOldest
 
-	//log.Printf("Creating Kafka consumer with brokers: %v, groupID: %s, and topics: %v", brokers, groupID, topics)
 	consumer, err := sarama.NewConsumerGroup(brokers, groupID, config)
 	if err != nil {
 		return nil, err

@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"service-order-gateway/internal/delivery/listener"
 	"strings"
 	"syscall"
 	"time"
@@ -27,10 +28,10 @@ type Server struct {
 	engine   *gin.Engine
 	host     string
 	jwt      jwt.JwtToken
-	msg      *kafka.MessageHandler
+	msg      *listener.MessageHandler
 	cfg      *config.Config
 	producer *kafka.KafkaProducer
-	consumer *kafka.KafkaConsumer
+	consumer *listener.KafkaConsumer
 	auth     usecase.AuthorizationUsecase
 }
 
@@ -51,9 +52,9 @@ func (s *Server) setupKafka() error {
 		return fmt.Errorf("error creating kafka producer: %w", err)
 	}
 
-	s.msg = kafka.NewMessageHandler(s.producer)
+	s.msg = listener.NewMessageHandler(s.producer, s.uc)
 
-	s.consumer, err = kafka.NewKafkaConsumer(brokers, s.cfg.KafkaGroupId, []string{s.cfg.OrderTopic}, s.msg)
+	s.consumer, err = listener.NewKafkaConsumer(brokers, s.cfg.KafkaGroupId, []string{s.cfg.OrderTopic}, s.msg)
 	if err != nil {
 		return fmt.Errorf("error creating Kafka consumer: %w", err)
 	}
@@ -133,7 +134,7 @@ func NewServer() *Server {
 	}
 
 	repo := repository.NewRepositoryOrder(database.Conn())
-	uc := usecase.NewUsecaseOrder(repo, producer) // We'll set the producer later
+	uc := usecase.NewUsecaseOrder(repo, producer, database.Conn())
 	auth := usecase.NewAuthorizationUsecase(jwtService)
 	engine := gin.Default()
 	host := fmt.Sprintf(":%s", cfg.ApiPort)

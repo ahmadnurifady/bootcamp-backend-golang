@@ -3,9 +3,11 @@ package server
 import (
 	"context"
 	"fmt"
+	"github.com/gin-gonic/gin"
 	"log"
 	"net/http"
 	"orchestrator-order/internal/config"
+	"orchestrator-order/internal/delivery/handler"
 	"orchestrator-order/internal/provider/db"
 	"orchestrator-order/internal/repository"
 	"orchestrator-order/internal/usecase"
@@ -18,8 +20,9 @@ import (
 )
 
 type Server struct {
-	uc usecase.TransactionUsecase
-	//engine   *gin.Engine
+	repo     repository.TransactionDetailRepository
+	uc       usecase.TransactionUsecase
+	engine   *gin.Engine
 	host     string
 	msg      *kafka.MessageHandler
 	cfg      *config.Config
@@ -28,7 +31,9 @@ type Server struct {
 }
 
 func (s *Server) setupControllers() {
-	//group := s.engine.Group("/api/v1")
+
+	group := s.engine.Group("/api/v1")
+	handler.NewTransactionHandler(s.uc, group).Route()
 	//group.Use(middleware.LogMiddleware())
 	//authMiddleware := middleware.NewAuthMiddleware(s.jwt)
 	//handler.NewHandlerOrder(s.uc, group, authMiddleware).Route()
@@ -44,7 +49,7 @@ func (s *Server) setupKafka() error {
 		return fmt.Errorf("error creating kafka producer: %w", err)
 	}
 
-	s.msg = kafka.NewMessageHandler(s.producer, s.uc)
+	s.msg = kafka.NewMessageHandler(s.producer, s.repo)
 
 	s.consumer, err = kafka.NewKafkaConsumer(brokers, s.cfg.KafkaGroupId, []string{s.cfg.OrchestraTopic}, s.msg)
 	if err != nil {
@@ -70,8 +75,8 @@ func (s *Server) Run() error {
 	}()
 
 	srv := &http.Server{
-		Addr: s.host,
-		//Handler: s.engine,
+		Addr:    s.host,
+		Handler: s.engine,
 	}
 
 	go func() {
@@ -123,15 +128,22 @@ func NewServer() *Server {
 		log.Fatalf("failed to create Kafka producer: %v", err)
 	}
 
+	producer, err := kafka.NewKafkaProducer(brokers, cfg.OrchestraTopic)
+	if err != nil {
+		log.Fatalf("failed to create Kafka producer: %v", err)
+	}
+
 	repo := repository.NewTransactionDetailRepository(database.Conn())
-	uc := usecase.NewOrderUsecase(repo)
-	//engine := gin.Default()
+	uc := usecase.NewOrderUsecase(repo, database.Conn(), producer)
+	engine := gin.Default()
 	host := fmt.Sprintf(":%s", cfg.ApiPort)
 
 	return &Server{
-		uc: uc,
-		//engine: engine,
-		host: host,
-		cfg:  cfg,
+		uc:       uc,
+		engine:   engine,
+		host:     host,
+		cfg:      cfg,
+		producer: producer,
+		repo:     repo,
 	}
 }

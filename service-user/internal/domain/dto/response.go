@@ -1,7 +1,5 @@
 package dto
 
-import "service-user/internal/domain"
-
 type MessageKafka struct {
 	OrderType      string `json:"orderType"`
 	FromService    string `json:"fromService"`
@@ -16,7 +14,7 @@ type MessageKafka struct {
 }
 
 type BaseResponse struct {
-	ResponseCode    int         `json:"responseCode"`
-	ResponseMessage string      `json:"responseMessage"`
-	Data            domain.User `json:"data"`
+	ResponseCode    int    `json:"responseCode"`
+	ResponseMessage string `json:"responseMessage"`
+	Data            any    `json:"data"`
 }

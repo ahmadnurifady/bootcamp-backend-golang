@@ -16,20 +16,20 @@ type connectDatabase struct {
 	cfg *config.Config
 }
 
-func (i *connectDatabase) openConn() error {
+func (c *connectDatabase) openConn() error {
 	dsn := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=disable",
-		i.cfg.Host, i.cfg.DbConfig.Port, i.cfg.User, i.cfg.DbConfig.Password, i.cfg.Name)
-	db, err := sql.Open(i.cfg.Driver, dsn)
+		c.cfg.Host, c.cfg.DbConfig.Port, c.cfg.User, c.cfg.DbConfig.Password, c.cfg.Name)
+	db, err := sql.Open(c.cfg.Driver, dsn)
 	if err != nil {
 		return fmt.Errorf("failed to open connection %v", err.Error())
 	}
 
-	i.db = db
+	c.db = db
 	return nil
 }
 
-func (i *connectDatabase) Conn() *sql.DB {
-	return i.db
+func (c *connectDatabase) Conn() *sql.DB {
+	return c.db
 }
 
 func NewConnectDatabase(cfg *config.Config) (ConnectDatabase, error) {
